@@ -29,5 +29,6 @@ done
 
 
 # Set the default index pattern.
+echo Setup default index on Elastic...
 curl -s -XPUT http://elastic:${ES_PASSWORD}@elasticsearch:9200/.kibana/config/${ELASTIC_VERSION} \
      -d "{\"defaultIndex\" : \"${ES_DEFAULT_INDEX_PATTERN}\"}"

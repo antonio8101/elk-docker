@@ -58,6 +58,22 @@ services:
     depends_on:
       - 'elasticsearch'
 
+  filebeat:
+    container_name: filebeat
+    image: "docker.elastic.co/beats/filebeat:${ELASTIC_VERSION}"
+    command: --strict.perms=false
+    environment:
+      - setup.kibana.host=kibana:5601
+      - output.elasticsearch.hosts=["elasticsearch:9200"]
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${ES_FILEBEAT_CONFIGURATION}:/usr/share/filebeat/filebeat.yml:ro
+      - ${ES_FILEBEAT_LOGS_INPUT}:/var/log/:ro
+    user: root
+    networks:
+      - 'elk_stack'
+
 
   # Configure Stack container. This short-lived container configures the stack once Kibana and Elasticsearch
   # are available. More specifically, using a script it sets passwords, import dashboards,
