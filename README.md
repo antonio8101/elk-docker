@@ -6,7 +6,7 @@ This project has a docker compose config which allows to setup easily an Elastic
 
 ## Requirements
 It is required to create a ```.env``` file to provide your configuration for the variables 
-used in the ```elk-docker-compose.yml``` file: 
+used in the ```docker-compose.yml``` file: 
 
 ```
 # this project folder
