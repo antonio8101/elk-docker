@@ -9,6 +9,9 @@ It is required to create a ```.env``` file to provide your configuration for the
 used in the ```elk-docker-compose.yml``` file: 
 
 ```
+# this project folder
+ES_FOLDER=/your/ELK_DocketCompose/folder
+
 # version of the ELK stack containers you want to use
 ELASTIC_VERSION=7.0.1
 
@@ -26,4 +29,8 @@ ES_MOUNT_DRIVE=/usr/data/
 
 # default index pattern for Kibana, can be anything
 ES_DEFAULT_INDEX_PATTERN=metricbeat-*
+
+# Filebeat configuration
+ES_FILEBEAT_CONFIGURATION=${ES_FOLDER}\config\filebeat.docker.yml
+ES_FILEBEAT_LOGS_INPUT=/your/Application/logs/folder
 ```
