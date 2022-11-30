@@ -34,3 +34,15 @@ ES_DEFAULT_INDEX_PATTERN=metricbeat-*
 ES_FILEBEAT_CONFIGURATION=${ES_FOLDER}\config\filebeat.docker.yml
 ES_FILEBEAT_LOGS_INPUT=/your/Application/logs/folder
 ```
+
+## Usage
+After configuration variable being set you can go directly on the project with shell and run the command:
+
+```
+docker-compose up -d
+```
+When you finished with it, you can just run:
+
+```
+docker-compose down -d
+```
