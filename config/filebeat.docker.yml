@@ -22,7 +22,7 @@ filebeat.inputs:
   - type: log
 
     # Unique ID among all inputs, an ID is required.
-    id: mfcs-logs-id
+    id: ${ES_FILEBEAT_INPUT}
 
     # Change to true to enable this input configuration.
     enabled: true
