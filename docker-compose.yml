@@ -61,6 +61,7 @@ services:
     image: "docker.elastic.co/beats/filebeat:${ELASTIC_VERSION}"
     command: --strict.perms=false
     environment:
+      - ES_FILEBEAT_INDEX_NAME=${ES_FILEBEAT_INDEX_NAME}
       - setup.kibana.host=kibana:5601
       - output.elasticsearch.hosts=["elasticsearch:9200"]
     volumes:
@@ -82,8 +83,8 @@ services:
     # Configure the container env so that the script can use the config settings
     environment:
       - 'ELASTIC_VERSION=${ELASTIC_VERSION}'
-      - 'ES_PASSWORD=${ES_PASSWORD}'
-      - 'ES_DEFAULT_INDEX_PATTERN=${ES_DEFAULT_INDEX_PATTERN}'
+      - 'ES_FILEBEAT_INDEX_NAME=${ES_FILEBEAT_INDEX_NAME}'
+      - 'ES_MAX_ANALYZED_OFFSET=${ES_MAX_ANALYZED_OFFSET}'
     volumes:
       - './init/configure-stack.sh:/usr/local/bin/configure-stack.sh:ro'
     command: ['/bin/bash', '-c', 'cat /usr/local/bin/configure-stack.sh | tr -d "\r" | bash']
