@@ -9,6 +9,11 @@ filebeat.inputs:
     paths:
       - /var/log/*.log
 
+    # enable this if your logs are json formatted
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.message_key: log
+
 # ============================== Filebeat modules ==============================
 
 filebeat.config.modules:
@@ -47,6 +52,8 @@ setup.template.settings:
   index.number_of_shards: 1
   #index.codec: best_compression
   #_source.enabled: false
+
+
 
 processors:
   - add_host_metadata:
