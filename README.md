@@ -30,7 +30,7 @@ ES_MOUNT_DRIVE=/your/choice/storage/folder
 # windows uri way -> C:/blabla/..
 
 # default index pattern for Kibana, can be anything
-ES_DEFAULT_INDEX_PATTERN=metricbeat-*
+ES_FILEBEAT_INDEX_NAME=your-favourite-for-logs
 
 # Filebeat configuration
 ES_FILEBEAT_CONFIGURATION=${ES_FOLDER}\config\filebeat.docker.yml
