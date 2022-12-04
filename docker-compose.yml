@@ -1,11 +1,14 @@
 version: '3'
 services:
+
   opensearch:
     container_name: opensearch
     restart: always
     hostname: opensearch
     image: "opensearchproject/opensearch:${ELASTIC_VERSION}"
+    mem_limit: ${ES_MEM_LIMIT}
     environment:
+      - plugins.security.disabled=true
       - path.data=/usr/share/opensearch/data
       - http.port=9200
       - http.host=0.0.0.0
@@ -28,15 +31,16 @@ services:
     healthcheck:
       test: [ "CMD", "curl","-s" ,"-f", "http://localhost:9200/_cat/health" ]
 
-  opensearch-dashboards:
+  dashboard:
     restart: always
-    container_name: opensearch-dashboards
+    container_name: dashboard
     hostname: dashboard
     image: "opensearchproject/opensearch-dashboards:${ELASTIC_VERSION}"
     environment:
+      - plugins.security.disabled=true
       - server.port=127.0.0.1:5601
       - server.name="dashboard"
-      - "OPENSEARCH_HOSTS=https://opensearch:9200"
+      - "OPENSEARCH_HOSTS=http://opensearch:9200"
     ports:
       - 5601:5601
     # Health check to confirm availability of Kibana
@@ -51,9 +55,42 @@ services:
     depends_on:
       - 'opensearch'
 
-volumes:
-  opensearch-data1:
-  opensearch-data2:
+  filebeat:
+    container_name: filebeat
+    restart: always
+    image: "docker.elastic.co/beats/filebeat:7.0.1"
+    command: --strict.perms=false
+    environment:
+      - ES_FILEBEAT_INDEX_NAME=${ES_FILEBEAT_INDEX_NAME}
+      - setup.kibana.host=dashboard:5601
+      - output.elasticsearch.hosts=["opensearch:9200"]
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${ES_FILEBEAT_CONFIGURATION}:/usr/share/filebeat/filebeat.yml
+      - ${ES_FILEBEAT_LOGS_INPUT}:/var/log/:ro
+    user: root
+    networks:
+      - 'opensearch-net'
+
+  # Configure Stack container. This short-lived container configures the stack once Kibana and Elasticsearch
+  # are available. More specifically, using a script it sets passwords, import dashboards,
+  # sets a default index pattern, loads templates and pipelines
+  configure_stack:
+    container_name: configure_stack
+    image: docker.elastic.co/beats/metricbeat-oss:8.5.2
+    environment:
+      - 'ELASTIC_VERSION=${ELASTIC_VERSION}'
+      - 'ES_FILEBEAT_INDEX_NAME=${ES_FILEBEAT_INDEX_NAME}'
+      - 'ES_MAX_ANALYZED_OFFSET=${ES_MAX_ANALYZED_OFFSET}'
+    volumes:
+      - './init/configure-stack.sh:/usr/local/bin/configure-stack.sh:ro'
+    command: [ '/bin/bash', '-c', 'cat /usr/local/bin/configure-stack.sh | tr -d "\r" | bash' ]
+    networks:
+      - 'opensearch-net'
+    depends_on:
+      - 'opensearch'
+      - 'dashboard'
 
 networks:
   opensearch-net:
