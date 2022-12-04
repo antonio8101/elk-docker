@@ -1,112 +1,64 @@
-version: "2.1"
+version: '3'
 services:
-
-  # Elasticsearch cluster. localhost 9200 (ensure this is open on host) --> container 9200
-  # For simplicity, running only a single node here
-  # To run multiple nodes on single machines: https://discuss.elastic.co/t/can-i-run-multiple-elasticsearch-nodes-on-the-same-machine/67
-  elasticsearch:
-    container_name: elasticsearch
+  opensearch:
+    container_name: opensearch
     restart: always
-    hostname: elasticsearch
-    image: "docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION}"
+    hostname: opensearch
+    image: "opensearchproject/opensearch:${ELASTIC_VERSION}"
     environment:
-      - xpack.security.enabled=false
-      - path.data=/usr/share/elasticsearch/data
+      - path.data=/usr/share/opensearch/data
       - http.port=9200
       - http.host=0.0.0.0
       - transport.host=127.0.0.1
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms${ES_JVM_HEAP} -Xmx${ES_JVM_HEAP}"
-    mem_limit: ${ES_MEM_LIMIT}
+      - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
     ulimits:
       memlock:
         soft: -1
         hard: -1
+      nofile:
+        soft: 65536 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
+        hard: 65536
     volumes:
-      # ES data dir mount to local drive
-      - ${ES_MOUNT_DRIVE}:/usr/share/elasticsearch/data
+      - ${ES_MOUNT_DRIVE}:/usr/share/opensearch/data
     ports:
       - '9200:9200'
-    # Internal network for the containers
     networks:
-      - 'elk_stack'
-    # Health check to confirm availability of ES. Other containers wait on this.
+      - 'opensearch-net'
     healthcheck:
-      test: ["CMD", "curl","-s" ,"-f", "http://localhost:9200/_cat/health"]
+      test: [ "CMD", "curl","-s" ,"-f", "http://localhost:9200/_cat/health" ]
 
-  # Kibana container. localhost 5601 (ensure this is open on host) --> container 5601
-  kibana:
-    container_name: kibana
+  opensearch-dashboards:
     restart: always
-    hostname: kibana
-    image: "docker.elastic.co/kibana/kibana:${ELASTIC_VERSION}"
+    container_name: opensearch-dashboards
+    hostname: dashboard
+    image: "opensearchproject/opensearch-dashboards:${ELASTIC_VERSION}"
     environment:
-      - "ELASTICSEARCH_PASSWORD=${ES_PASSWORD}"
       - server.port=127.0.0.1:5601
-      - elasticsearch.url="http://elasticsearch:9200"
-      - server.name="kibana"
+      - server.name="dashboard"
+      - "OPENSEARCH_HOSTS=https://opensearch:9200"
     ports:
-      - '5601:5601'
+      - 5601:5601
     # Health check to confirm availability of Kibana
     healthcheck:
-          test: ["CMD", "curl", "-s", "-f", "http://localhost:5601/app/kibana"]
-          retries: 6
-    # Internal network for the containers
+      test: [ "CMD", "curl", "-s", "-f", "http://localhost:5601/" ]
+      retries: 6
     networks:
-      - 'elk_stack'
+      - 'opensearch-net'
+    expose:
+      - "5601"
     # We don't start Kibana until the ES instance is ready
     depends_on:
-      - 'elasticsearch'
+      - 'opensearch'
 
-  filebeat:
-    container_name: filebeat
-    restart: always
-    image: "docker.elastic.co/beats/filebeat:${ELASTIC_VERSION}"
-    command: --strict.perms=false
-    environment:
-      - ES_FILEBEAT_INDEX_NAME=${ES_FILEBEAT_INDEX_NAME}
-      - setup.kibana.host=kibana:5601
-      - output.elasticsearch.hosts=["elasticsearch:9200"]
-    volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${ES_FILEBEAT_CONFIGURATION}:/usr/share/filebeat/filebeat.yml:ro
-      - ${ES_FILEBEAT_LOGS_INPUT}:/var/log/:ro
-    user: root
-    networks:
-      - 'elk_stack'
+volumes:
+  opensearch-data1:
+  opensearch-data2:
 
-
-  # Configure Stack container. This short-lived container configures the stack once Kibana and Elasticsearch
-  # are available. More specifically, using a script it sets passwords, import dashboards,
-  # sets a default index pattern, loads templates and pipelines
-  configure_stack:
-    container_name: configure_stack
-    image: docker.elastic.co/beats/metricbeat:${ELASTIC_VERSION}
-    # Configure the container env so that the script can use the config settings
-    environment:
-      - 'ELASTIC_VERSION=${ELASTIC_VERSION}'
-      - 'ES_FILEBEAT_INDEX_NAME=${ES_FILEBEAT_INDEX_NAME}'
-      - 'ES_MAX_ANALYZED_OFFSET=${ES_MAX_ANALYZED_OFFSET}'
-    volumes:
-      - './init/configure-stack.sh:/usr/local/bin/configure-stack.sh:ro'
-    command: ['/bin/bash', '-c', 'cat /usr/local/bin/configure-stack.sh | tr -d "\r" | bash']
-    # Internal network for the containers
-    networks:
-      - 'elk_stack'
-    # Wait for ES, Kibana to come up before stack config
-    depends_on:
-      - 'elasticsearch'
-      - 'kibana'
-
-
-# network connectors used in the docker env
 networks:
-  elk_stack:
-      driver: bridge
-      ipam:
-        driver: default
-        config:
-        # default docker compose subnet(172.177.0.0/16), which may overlap with existing services on home network.
-        # use this configuration to update to a different subnet
+  opensearch-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
         - subnet: 192.168.1.0/24
